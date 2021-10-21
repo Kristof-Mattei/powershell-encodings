@@ -1,1 +1,73 @@
+name: Encodings
 
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  dump-encodings:
+    name: Dump encodings with pwsh
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ macos-latest, windows-latest, ubuntu-latest ]
+    env:
+      OUTPUT_FILENAME: ${{ matrix.os }}-pwsh.txt
+
+    steps:
+      - name: Write string to file without changing encoding
+        shell: pwsh
+        run: |
+          &{
+            $OutputEncoding | Select-Object BodyName | Format-List
+            $PSVersionTable | Select-Object OS, PSVersion | Format-List
+            Write-Output "🧑‍💻"
+          } | Out-File ./${{ env.OUTPUT_FILENAME }}
+          
+          Get-Content ./${{ env.OUTPUT_FILENAME }}
+            
+      - name: Store file in artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: output
+          path: ./${{ env.OUTPUT_FILENAME }}
+
+  dump-encodings-again-because-shell-doesnt-support-matrix:
+    name: Dump encodings with Powershell (windows-latest)
+    runs-on: windows-latest
+    env:
+      OUTPUT_FILENAME: windows-latest-powershell.txt
+
+    steps:
+      - name: Write string to file without changing encoding
+        shell: powershell
+        run: |
+          &{
+            $OutputEncoding | Select-Object BodyName | Format-List
+            $PSVersionTable | Select-Object OS, PSVersion | Format-List
+            Write-Output "🧑‍💻"
+          } | Out-File ./${{ env.OUTPUT_FILENAME }}
+          
+          Get-Content ./${{ env.OUTPUT_FILENAME }}
+            
+      - name: Store file in artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: output
+          path: ./${{ env.OUTPUT_FILENAME }}
+      
+  dump-file-encodings:
+    name: Get the files and dump encodings
+    runs-on: ubuntu-latest
+    needs:
+      - dump-encodings
+      - dump-encodings-again-because-shell-doesnt-support-matrix
+    
+    steps:
+      - name: Pull artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: output
+
+      - name: Display encodings of previously generated files
+        run: file -i *
